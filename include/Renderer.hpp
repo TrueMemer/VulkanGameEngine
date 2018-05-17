@@ -28,6 +28,9 @@ public:
 	VkBuffer vkVertexBuffer;
 	VkDeviceMemory vkVertexBufferMemory;
 
+	VkBuffer vkVertexStagingBuffer;
+	VkDeviceMemory vkVertexStagingBufferMemory;
+
 	const std::vector<Vertex> vertices = {
 		{ { 0.0f, -0.5f },{ 1.0f, 1.0f, 1.0f } },
 		{ { 0.5f, 0.5f },{ 0.0f, 1.0f, 0.0f } },
@@ -56,6 +59,9 @@ public:
 	void initVulkanCommandBuffers();
 	void initVulkanSemaphores();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
+
+	void createVulkanBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags propertyFlags, VkBuffer& buffer, VkDeviceMemory &bufferMemory);
+	void copyVulkanBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
 	void cleanupSwapChain();
 	void recreateVulkanSwapChain();

@@ -507,35 +507,21 @@ void Renderer::initVulkanCommandPool()
 void Renderer::initVulkanVertexBuffer()
 {
 	LOG_INFO("Creating vertex buffer");
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	if (vkCreateBuffer(vkLogicalDevice, &bufferInfo, nullptr, &vkVertexBuffer) != VK_SUCCESS)
-	{
-		LOG_FATAL("Failed to create Vulkan vertex buffer");
-	}
+	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(vkLogicalDevice, vkVertexBuffer, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = Engine::getPhysicalDeviceDetails().getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	if (vkAllocateMemory(vkLogicalDevice, &allocInfo, nullptr, &vkVertexBufferMemory) != VK_SUCCESS) 
-	{
-		LOG_FATAL("Failed to allocate vertex buffer memory");
-	}
-
-	vkBindBufferMemory(vkLogicalDevice, vkVertexBuffer, vkVertexBufferMemory, 0);
+	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkVertexStagingBuffer, vkVertexStagingBufferMemory);
 
 	void* data;
-	vkMapMemory(vkLogicalDevice, vkVertexBufferMemory, 0, bufferInfo.size, 0, &data);
-	memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-	vkUnmapMemory(vkLogicalDevice, vkVertexBufferMemory);
+	vkMapMemory(vkLogicalDevice, vkVertexStagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, vertices.data(), (size_t)bufferSize);
+	vkUnmapMemory(vkLogicalDevice, vkVertexStagingBufferMemory);
+
+	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkVertexBuffer, vkVertexBufferMemory);
+
+	copyVulkanBuffer(vkVertexStagingBuffer, vkVertexBuffer, bufferSize);
+
+	vkDestroyBuffer(vkLogicalDevice, vkVertexStagingBuffer, 0);
+	vkFreeMemory(vkLogicalDevice, vkVertexStagingBufferMemory, 0);
 
 }
 
@@ -622,6 +608,70 @@ VkShaderModule Renderer::createShaderModule(const std::vector<char>& code) {
 	}
 
 	return shaderModule;
+
+}
+
+void Renderer::createVulkanBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags propertyFlags,
+	VkBuffer& buffer, VkDeviceMemory &bufferMemory) 
+{
+
+	VkBufferCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	info.size = size;
+	info.usage = usage;
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(vkLogicalDevice, &info, VK_NULL_HANDLE, &buffer) != VK_SUCCESS) 
+	{
+		LOG_FATAL("Failed to create buffer!");
+	}
+
+	VkMemoryRequirements requirements;
+
+	vkGetBufferMemoryRequirements(vkLogicalDevice, buffer, &requirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = requirements.size;
+	allocInfo.memoryTypeIndex = Engine::getPhysicalDeviceDetails().getMemoryType(requirements.memoryTypeBits, propertyFlags);
+
+	if (vkAllocateMemory(vkLogicalDevice, &allocInfo, VK_NULL_HANDLE, &bufferMemory) != VK_SUCCESS) 
+	{
+		LOG_FATAL("Failed to allocate buffer memory!");
+	}
+
+	vkBindBufferMemory(vkLogicalDevice, buffer, bufferMemory, 0);
+}
+
+void Renderer::copyVulkanBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+
+	VkCommandBufferAllocateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	bufferInfo.commandPool = vkCommandPool;
+	bufferInfo.commandBufferCount = 1;
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(vkLogicalDevice, &bufferInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+	vkQueueSubmit(vkGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(vkGraphicsQueue);
+
+	vkFreeCommandBuffers(vkLogicalDevice, vkCommandPool, 1, &commandBuffer);
 
 }
 
