@@ -4,6 +4,12 @@
 #include "Engine.hpp"
 #include "Vertex.hpp"
 
+struct UniformBufferObject {
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
+};
+
 class Renderer
 {
 public:
@@ -16,6 +22,9 @@ public:
 	VkSwapchainKHR vkSwapChain;
 	VkPipeline vkPipeline;
 	VkPipelineLayout vkPipelineLayout;
+	VkDescriptorSetLayout vkDescriptorSetLayout;
+	VkDescriptorPool vkDescriptorPool;
+	VkDescriptorSet vkDescriptorSet;
 	VkRenderPass vkRenderPass;
 	VkCommandPool vkCommandPool;
 	std::vector<VkCommandBuffer> vkCommandBuffers;
@@ -31,6 +40,9 @@ public:
 	VkBuffer vkIndexBuffer;
 	VkDeviceMemory vkIndexBufferMemory;
 
+	VkBuffer vkUniformBuffer;
+	VkDeviceMemory vkUniformBufferMemory;
+
 	VkBuffer vkStagingBuffer;
 	VkDeviceMemory vkStagingBufferMemory;
 
@@ -44,6 +56,8 @@ public:
 	const std::vector<uint16_t> indices = {
 		0, 1, 2, 2, 3, 0
 	};
+
+	UniformBufferObject ubo;
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& modes);
@@ -60,17 +74,23 @@ public:
 	void initVulkanSwapChain();
 	void initVulkanImageViews();
 	void initVulkanRenderPass();
+	void initVulkanDescriptorSetLayout();
 	void initVulkanGraphicsPipeline();
 	void initVulkanFramebuffers();
 	void initVulkanCommandPool();
-	void initVulkanVertexBuffer();
 	void initVulkanIndexBuffer();
+	void initVulkanVertexBuffer();
+	void initVulkanUniformBuffer();
+	void initVulkanDescriptorPool();
+	void initVulkanDescriptorSet();
 	void initVulkanCommandBuffers();
 	void initVulkanSemaphores();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void createVulkanBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags propertyFlags, VkBuffer& buffer, VkDeviceMemory &bufferMemory);
 	void copyVulkanBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+
+	void updateUniformBuffer();
 
 	void cleanupSwapChain();
 	void recreateVulkanSwapChain();

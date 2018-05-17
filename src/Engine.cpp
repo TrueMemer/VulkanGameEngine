@@ -48,6 +48,7 @@ void Engine::start()
 			}
 		}
 
+		renderer->updateUniformBuffer();
 		renderer->render();
 		frameTime = clock.time() - frameTime;
 
