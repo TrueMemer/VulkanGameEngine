@@ -28,13 +28,21 @@ public:
 	VkBuffer vkVertexBuffer;
 	VkDeviceMemory vkVertexBufferMemory;
 
-	VkBuffer vkVertexStagingBuffer;
-	VkDeviceMemory vkVertexStagingBufferMemory;
+	VkBuffer vkIndexBuffer;
+	VkDeviceMemory vkIndexBufferMemory;
+
+	VkBuffer vkStagingBuffer;
+	VkDeviceMemory vkStagingBufferMemory;
 
 	const std::vector<Vertex> vertices = {
-		{ { 0.0f, -0.5f },{ 1.0f, 1.0f, 1.0f } },
-		{ { 0.5f, 0.5f },{ 0.0f, 1.0f, 0.0f } },
-		{ { -0.5f, 0.5f },{ 0.0f, 0.0f, 1.0f } }
+		{ { -0.5f, -0.5f },{ 1.0f, 0.0f, 0.0f } },
+		{ { 0.5f, -0.5f },{ 0.0f, 1.0f, 0.0f } },
+		{ { 0.5f, 0.5f },{ 0.0f, 0.0f, 1.0f } },
+		{ { -0.5f, 0.5f },{ 1.0f, 1.0f, 1.0f } }
+	};
+	
+	const std::vector<uint16_t> indices = {
+		0, 1, 2, 2, 3, 0
 	};
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
@@ -56,6 +64,7 @@ public:
 	void initVulkanFramebuffers();
 	void initVulkanCommandPool();
 	void initVulkanVertexBuffer();
+	void initVulkanIndexBuffer();
 	void initVulkanCommandBuffers();
 	void initVulkanSemaphores();
 	VkShaderModule createShaderModule(const std::vector<char>& code);

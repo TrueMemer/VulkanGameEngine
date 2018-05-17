@@ -2,11 +2,13 @@
 
 #include "PCH.hpp"
 
-struct Vertex {
+struct Vertex 
+{
 	glm::vec2 position;
 	glm::vec3 color;
 
-	static VkVertexInputBindingDescription getBindingDescription() {
+	static VkVertexInputBindingDescription getBindingDescription() 
+	{
 		VkVertexInputBindingDescription desc = {};
 		desc.binding = 0;
 		desc.stride = sizeof(Vertex);
@@ -15,7 +17,8 @@ struct Vertex {
 		return desc;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescription() {
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescription() 
+	{
 
 		std::array<VkVertexInputAttributeDescription, 2> desc;
 

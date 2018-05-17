@@ -10,6 +10,7 @@ void Renderer::init()
 	initVulkanGraphicsPipeline();
 	initVulkanFramebuffers();
 	initVulkanCommandPool();
+	initVulkanIndexBuffer();
 	initVulkanVertexBuffer();
 	initVulkanCommandBuffers();
 	initVulkanSemaphores();
@@ -509,20 +510,42 @@ void Renderer::initVulkanVertexBuffer()
 	LOG_INFO("Creating vertex buffer");
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkVertexStagingBuffer, vkVertexStagingBufferMemory);
+	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkStagingBuffer, vkStagingBufferMemory);
 
 	void* data;
-	vkMapMemory(vkLogicalDevice, vkVertexStagingBufferMemory, 0, bufferSize, 0, &data);
+	vkMapMemory(vkLogicalDevice, vkStagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, vertices.data(), (size_t)bufferSize);
-	vkUnmapMemory(vkLogicalDevice, vkVertexStagingBufferMemory);
+	vkUnmapMemory(vkLogicalDevice, vkStagingBufferMemory);
 
 	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkVertexBuffer, vkVertexBufferMemory);
 
-	copyVulkanBuffer(vkVertexStagingBuffer, vkVertexBuffer, bufferSize);
+	copyVulkanBuffer(vkStagingBuffer, vkVertexBuffer, bufferSize);
 
-	vkDestroyBuffer(vkLogicalDevice, vkVertexStagingBuffer, 0);
-	vkFreeMemory(vkLogicalDevice, vkVertexStagingBufferMemory, 0);
+	vkDestroyBuffer(vkLogicalDevice, vkStagingBuffer, 0);
+	vkFreeMemory(vkLogicalDevice, vkStagingBufferMemory, 0);
 
+}
+
+void Renderer::initVulkanIndexBuffer()
+{
+	LOG_INFO("Creating index buffer");
+	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkStagingBuffer, vkStagingBufferMemory);
+
+	void* data;
+	vkMapMemory(vkLogicalDevice, vkStagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(vkLogicalDevice, vkStagingBufferMemory);
+
+	createVulkanBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkIndexBuffer, vkIndexBufferMemory);
+
+	copyVulkanBuffer(vkStagingBuffer, vkIndexBuffer, bufferSize);
+
+	vkDestroyBuffer(vkLogicalDevice, vkStagingBuffer, nullptr);
+	vkFreeMemory(vkLogicalDevice, vkStagingBufferMemory, nullptr);
 }
 
 void Renderer::initVulkanCommandBuffers()
@@ -566,8 +589,9 @@ void Renderer::initVulkanCommandBuffers()
 		VkBuffer vertexBuffers[] = { vkVertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(vkCommandBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(vkCommandBuffers[i], vkIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 		
-		vkCmdDraw(vkCommandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+		vkCmdDrawIndexed(vkCommandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(vkCommandBuffers[i]);
 
@@ -678,6 +702,8 @@ void Renderer::copyVulkanBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
 void Renderer::cleanup()
 {
 	cleanupSwapChain();
+	vkDestroyBuffer(vkLogicalDevice, vkIndexBuffer, nullptr);
+	vkFreeMemory(vkLogicalDevice, vkIndexBufferMemory, nullptr);
 	vkDestroyBuffer(vkLogicalDevice, vkVertexBuffer, nullptr);
 	vkFreeMemory(vkLogicalDevice, vkVertexBufferMemory, nullptr);
 	vkDestroySemaphore(vkLogicalDevice, renderFinishedSemaphore, 0);
