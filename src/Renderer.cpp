@@ -10,6 +10,7 @@ void Renderer::init()
 	initVulkanGraphicsPipeline();
 	initVulkanFramebuffers();
 	initVulkanCommandPool();
+	initVulkanVertexBuffer();
 	initVulkanCommandBuffers();
 	initVulkanSemaphores();
 }
@@ -351,10 +352,15 @@ void Renderer::initVulkanGraphicsPipeline()
 
 	VkPipelineShaderStageCreateInfo shaderStagesArray[] = { vertShaderStageInfo, fragShaderStageInfo };
 
+	auto bindingDescription = Vertex::getBindingDescription();
+	auto attributeDescriptions = Vertex::getAttributeDescription();
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
 	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -498,6 +504,41 @@ void Renderer::initVulkanCommandPool()
 	}
 }
 
+void Renderer::initVulkanVertexBuffer()
+{
+	LOG_INFO("Creating vertex buffer");
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	if (vkCreateBuffer(vkLogicalDevice, &bufferInfo, nullptr, &vkVertexBuffer) != VK_SUCCESS)
+	{
+		LOG_FATAL("Failed to create Vulkan vertex buffer");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(vkLogicalDevice, vkVertexBuffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = Engine::getPhysicalDeviceDetails().getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(vkLogicalDevice, &allocInfo, nullptr, &vkVertexBufferMemory) != VK_SUCCESS) 
+	{
+		LOG_FATAL("Failed to allocate vertex buffer memory");
+	}
+
+	vkBindBufferMemory(vkLogicalDevice, vkVertexBuffer, vkVertexBufferMemory, 0);
+
+	void* data;
+	vkMapMemory(vkLogicalDevice, vkVertexBufferMemory, 0, bufferInfo.size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+	vkUnmapMemory(vkLogicalDevice, vkVertexBufferMemory);
+
+}
+
 void Renderer::initVulkanCommandBuffers()
 {
 	LOG_INFO("Creating Vulkan command buffers");
@@ -536,7 +577,11 @@ void Renderer::initVulkanCommandBuffers()
 
 		vkCmdBindPipeline(vkCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
 
-		vkCmdDraw(vkCommandBuffers[i], 3, 1, 0, 0);
+		VkBuffer vertexBuffers[] = { vkVertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(vkCommandBuffers[i], 0, 1, vertexBuffers, offsets);
+		
+		vkCmdDraw(vkCommandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 		vkCmdEndRenderPass(vkCommandBuffers[i]);
 
@@ -583,6 +628,8 @@ VkShaderModule Renderer::createShaderModule(const std::vector<char>& code) {
 void Renderer::cleanup()
 {
 	cleanupSwapChain();
+	vkDestroyBuffer(vkLogicalDevice, vkVertexBuffer, nullptr);
+	vkFreeMemory(vkLogicalDevice, vkVertexBufferMemory, nullptr);
 	vkDestroySemaphore(vkLogicalDevice, renderFinishedSemaphore, 0);
 	vkDestroySemaphore(vkLogicalDevice, imageAvailableSemaphore, 0);
 	vkDestroyCommandPool(vkLogicalDevice, vkCommandPool, 0);
@@ -594,15 +641,15 @@ void Renderer::cleanupSwapChain()
 	for (auto framebuffer : vkFramebuffers)
 	{
 		vkDestroyFramebuffer(vkLogicalDevice, framebuffer, nullptr);
-		vkDestroyPipelineLayout(vkLogicalDevice, vkPipelineLayout, nullptr);
-		vkDestroyPipeline(vkLogicalDevice, vkPipeline, nullptr);
-		vkFreeCommandBuffers(vkLogicalDevice, vkCommandPool, U32(vkCommandBuffers.size()), vkCommandBuffers.data());
-		vkDestroyRenderPass(vkLogicalDevice, vkRenderPass, nullptr);
+	}
 
-		for (auto imageView : vkSwapChainImageViews) {
-			vkDestroyImageView(vkLogicalDevice, imageView, nullptr);
+	vkFreeCommandBuffers(vkLogicalDevice, vkCommandPool, U32(vkCommandBuffers.size()), vkCommandBuffers.data());
+	vkDestroyPipeline(vkLogicalDevice, vkPipeline, nullptr);
+	vkDestroyPipelineLayout(vkLogicalDevice, vkPipelineLayout, nullptr);
+	vkDestroyRenderPass(vkLogicalDevice, vkRenderPass, nullptr);
 
-		}
+	for (auto imageView : vkSwapChainImageViews) {
+		vkDestroyImageView(vkLogicalDevice, imageView, nullptr);
 	}
 
 	vkDestroySwapchainKHR(vkLogicalDevice, vkSwapChain, nullptr);

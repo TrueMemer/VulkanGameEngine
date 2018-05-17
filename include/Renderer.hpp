@@ -2,6 +2,7 @@
 
 #include "PCH.hpp"
 #include "Engine.hpp"
+#include "Vertex.hpp"
 
 class Renderer
 {
@@ -24,6 +25,15 @@ public:
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
 
+	VkBuffer vkVertexBuffer;
+	VkDeviceMemory vkVertexBufferMemory;
+
+	const std::vector<Vertex> vertices = {
+		{ { 0.0f, -0.5f },{ 1.0f, 1.0f, 1.0f } },
+		{ { 0.5f, 0.5f },{ 0.0f, 1.0f, 0.0f } },
+		{ { -0.5f, 0.5f },{ 0.0f, 0.0f, 1.0f } }
+	};
+
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& modes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
@@ -42,6 +52,7 @@ public:
 	void initVulkanGraphicsPipeline();
 	void initVulkanFramebuffers();
 	void initVulkanCommandPool();
+	void initVulkanVertexBuffer();
 	void initVulkanCommandBuffers();
 	void initVulkanSemaphores();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
