@@ -10,7 +10,8 @@ struct Event
 	Event() {}
 	Event(Type pType) : type(pType) {}
 
-	union {
+	union EventUnion {
+		EventUnion(){}
 		struct key_struct {
 			Key key;
 			bool shift;
@@ -20,11 +21,11 @@ struct Event
 			bool caps;
 		};
 		key_struct keyEvent;
-	};
+	} eventUnion;
 
 	void constructKey(Key pKey, bool pShift, bool pAlt, bool pSys, bool pCtrl, bool pCaps)
 	{
-		keyEvent.key = pKey; keyEvent.shift = pShift; keyEvent.alt = pAlt; keyEvent.sys = pSys; keyEvent.ctrl = pCtrl; keyEvent.caps = pCaps;
+		eventUnion.keyEvent.key = pKey; eventUnion.keyEvent.shift = pShift; eventUnion.keyEvent.alt = pAlt; eventUnion.keyEvent.sys = pSys; eventUnion.keyEvent.ctrl = pCtrl; eventUnion.keyEvent.caps = pCaps;
 	}
 };
 
@@ -57,10 +58,10 @@ public:
 class KeyEvent : private Event
 {
 public:
-	Key getKey() { return keyEvent.key; }
-	bool getShift() { return keyEvent.shift; }
-	bool getAlt() { return keyEvent.alt; }
-	bool getSys() { return keyEvent.sys; }
-	bool getCtrl() { return keyEvent.ctrl; }
-	bool getCaps() { return keyEvent.caps; }
+	Key getKey() { return eventUnion.keyEvent.key; }
+	bool getShift() { return eventUnion.keyEvent.shift; }
+	bool getAlt() { return eventUnion.keyEvent.alt; }
+	bool getSys() { return eventUnion.keyEvent.sys; }
+	bool getCtrl() { return eventUnion.keyEvent.ctrl; }
+	bool getCaps() { return eventUnion.keyEvent.caps; }
 };

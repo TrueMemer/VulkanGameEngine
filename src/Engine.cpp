@@ -36,13 +36,13 @@ void Engine::start()
 		while (window->eventQ.pollEvent(ev)) {
 			switch (ev.type) {
 				case Event::KeyDown: {
-					if (ev.keyEvent.key.code == Key::KC_ESCAPE)
+					if (ev.eventUnion.keyEvent.key.code == Key::KC_ESCAPE)
 						isRunning = false;
-					std::cout << "Key down: " << char(ev.keyEvent.key.code) << std::endl;
+					std::cout << "Key down: " << char(ev.eventUnion.keyEvent.key.code) << std::endl;
 					break;
 				}
 				case Event::KeyUp: {
-					std::cout << "Key up: " << char(ev.keyEvent.key.code) << std::endl;
+					std::cout << "Key up: " << char(ev.eventUnion.keyEvent.key.code) << std::endl;
 					break;
 				}
 			}
