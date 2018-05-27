@@ -43,12 +43,19 @@
 
 #include <fstream>
 
+#include <unordered_map>
+
 #include <chrono>
 
 #include <queue>
 
-#include <array>
+#include <functional>
 
+#include <array>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp> // glm::vec3
 #include <glm/vec4.hpp> // glm::vec4
